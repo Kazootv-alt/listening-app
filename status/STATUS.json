@@ -1,0 +1,14 @@
+{
+  "state_id": "ST-20261106-0230-05",
+  "h002_state": "公開URLで配信完了・動作確認済み（PC Chromium相当）。iPhone実機歩行試験のみ残り",
+  "public_url": "https://kazootv-alt.github.io/listening-app/app.html",
+  "human_intervention_point": "iPhone実機での歩行試験1回のみ",
+  "last_result_time": "2026-11-06T02:30:00+09:00",
+  "verified_on_public_url": {
+    "crossOriginIsolated": true,
+    "service_worker": "registered",
+    "int8_model_sha256_ok": "92,361,271 bytes, 11 parts, hash matches",
+    "tts_generation": "OK: 6 sentences -> 22.35 s audio, 109 s synth on the PC browser (iPhone speed unknown)"
+  },
+  "unverified": ["iPhone Safari behavior (isolation, memory, persist, screen-off playback, speed, heat)", "fp32 not delivered"]
+}
