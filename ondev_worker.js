@@ -147,7 +147,8 @@ let ready = null;
 async function init(cfg) {
   self.__test = !!cfg.test;
   try { await caches.delete('ondev-model-v1'); } catch (e) { }
-  ort.env.wasm.numThreads = cfg.threads || Math.min(4, navigator.hardwareConcurrency || 1);
+  var __ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  ort.env.wasm.numThreads = cfg.threads || (__ios ? 1 : Math.min(4, navigator.hardwareConcurrency || 1));
   ort.env.wasm.wasmPaths = cfg.base || './';
   const t0 = performance.now();
   const [m, v, vb] = await Promise.all([
