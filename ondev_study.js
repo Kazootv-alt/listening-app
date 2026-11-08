@@ -184,7 +184,7 @@
     var s = state(), audio = 0, synth = 0; try { var L = window.__long && window.__long(); if (L) audio = L.fullDur.reduce(function (a, b) { return a + (b || 0); }, 0); } catch (e) { }
     (window.__ondevRes || []).forEach(function (x) { if (x.timing) synth += x.timing.synth_sec; });
     var gen = (Date.now() - tStart) / 1000;
-    send('finish', Object.assign({ ok: ok, total_sec: Math.round(gen), audio_sec: Math.round(audio), synth_sec: Math.round(synth), rtf_synth: audio ? Math.round(synth / audio * 100) / 100 : null, rtf_incl_setup: audio ? Math.round(gen / audio * 100) / 100 : null, fallback: fallbackUsed, mem: mem(), log: (window.__ondevLog || []).filter(function (x) { return x.type === 'warn'; }).slice(0, 5) }, s));
+    send('finish', Object.assign({ ok: ok, total_sec: Math.round(gen), audio_sec: Math.round(audio), synth_sec: Math.round(synth), rtf_synth: audio ? Math.round(synth / audio * 100) / 100 : null, rtf_incl_setup: audio ? Math.round(gen / audio * 100) / 100 : null, fallback: fallbackUsed, mem: mem(), log: (window.__ondevLog || []).filter(function (x) { return x.type === 'warn'; }).slice(0, 12) }, s));
     lsSet({ run: RUN, kind: KIND, done: true });
     if (ok) say('聞けます：全部できました。画面を消して、歩きながら聞いて大丈夫です');
     else if (s.ok > 0) say('続きを作れませんでした。できた所までで学習を続けられます');

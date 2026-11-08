@@ -48,7 +48,7 @@ export async function phonemize(text) {
   text = text.trim(); const parts = []; let last = 0;
   for (const m of text.matchAll(PUNCT)) { if (m.index > last) parts.push([false, text.slice(last, m.index)]); parts.push([true, m[0]]); last = m.index + m[0].length; }
   if (last < text.length) parts.push([false, text.slice(last)]);
-  const out = await Promise.all(parts.map(async ([p, s]) => p ? s : (await esp(s, 'en-us')).join(' ')));
+  __dbg('ph_start'); const out = await Promise.all(parts.map(async ([p, s]) => p ? s : (await esp(s, 'en-us')).join(' '))); __dbg('ph_done');
   let ph = out.join('');
   ph = ph.replace(/oːɹ/g, 'ɔːɹ'); // espeak-ngのデータ版の差を補正（サーバー側espeak 1.52は story/four/before 等を ɔːɹ と読む。照合結果: tests/ph_7k_cmp.json）
   ph = [...ph].filter(c => c in vocab).join('');
@@ -68,7 +68,7 @@ async function infer(tokens) {
   const ids = BigInt64Array.from([0, ...tokens, 0].map(BigInt));
   const row = Math.min(tokens.length, 510) - 1, st = voice.subarray(row * 256, row * 256 + 256);
   const feeds = { [tokName]: new ort.Tensor('int64', ids, [1, ids.length]), style: new ort.Tensor('float32', Float32Array.from(st), [1, 256]), speed: new ort.Tensor('float32', Float32Array.from([1]), [1]) };
-  const o = await sess.run(feeds); return o[sess.outputNames[0]].data;
+  __dbg('run_start:' + tokens.length); const o = await sess.run(feeds); __dbg('run_done'); return o[sess.outputNames[0]].data;
 }
 // kokoro_onnx の chunker（510音素以内に均等分割）を同じ規則で移植
 const BOUNDS = [/(?<=[.!?…])\s+/, /(?<=[,;:])\s+/, /\s+/];
@@ -143,6 +143,7 @@ async function generate(pid, sentences) {
   return { pid, files, durations: durs, fullOffsets: offs, reading, fallback: fb, chunk_fallback: fbflag, mime: 'audio/wav', timing: { total_sec: (performance.now() - t0) / 1000, synth_sec: tSynth, audio_sec: Math.round(allw.length / SR * 100) / 100 } };
 }
 
+let __dbgN = 0; const __dbg = (m) => { if (__dbgN++ < 10) postMessage({ type: 'warn', msg: m, t: Math.round(performance.now()) }); };
 let ready = null;
 async function init(cfg) {
   self.__test = !!cfg.test;
@@ -159,6 +160,7 @@ async function init(cfg) {
   postMessage({ type: 'progress', stage: 'session', wm_mb: __wm() });
   sess = await ort.InferenceSession.create(m, { executionProviders: ['wasm'], graphOptimizationLevel: 'all' });
   tokName = sess.inputNames.includes('input_ids') ? 'input_ids' : 'tokens';
+  if (__ios) { try { const t1 = performance.now(); const ph = await phonemize('Hello.'); __dbg('probe_ph:' + Math.round(performance.now() - t1) + 'ms'); const t2 = performance.now(); await infer([...ph].map(c => vocab[c]).filter(x => x !== undefined)); __dbg('probe_run:' + Math.round(performance.now() - t2) + 'ms'); } catch (e) { __dbg('probe_err:' + String(e && e.message || e).slice(0, 80)); } }
   return { load_sec: (performance.now() - t0) / 1000, threads: ort.env.wasm.numThreads, model: modelInfo, coi: self.crossOriginIsolated === true };
 }
 // モデルは初回だけダウンロードし、Cache Storage に保存（2回目以降は通信なし）。
