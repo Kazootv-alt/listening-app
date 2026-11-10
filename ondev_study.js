@@ -31,6 +31,7 @@
   var RUN = 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), T0 = Date.now();
   var sent = 0, KIND = 'fp32', crashFlag = false;
   function ring(ev) { /* 端末内にも直近150件を保持（PCへ届かなかった場合の控え） */ try { var a = JSON.parse(localStorage.getItem('ondevLog') || '[]'); a.push(ev); if (a.length > 150) a = a.slice(-150); localStorage.setItem('ondevLog', JSON.stringify(a)); } catch (e) { } }
+  (function () { try { var L = window.__ondevLog; if (L && !L.__w) { var op = L.push; L.push = function (x) { try { if (x && x.type === 'warn' && /^(ph_|run_|probe_|init_|model_|session_)/.test(x.msg)) setTimeout(function () { send('wstage', { m: x.msg, t: x.t }); }, 0); } catch (e) { } return op.apply(L, arguments); }; L.__w = 1; } } catch (e) { } })();
   function send(type, data) { /* PCへ1件記録。画面が消える直前でも届くよう sendBeacon を優先 */
     if (type === 'engine_crash') crashFlag = true;
     if (sent >= 400) return; sent++;

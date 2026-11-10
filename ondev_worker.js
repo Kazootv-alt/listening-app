@@ -143,7 +143,7 @@ async function generate(pid, sentences) {
   return { pid, files, durations: durs, fullOffsets: offs, reading, fallback: fb, chunk_fallback: fbflag, mime: 'audio/wav', timing: { total_sec: (performance.now() - t0) / 1000, synth_sec: tSynth, audio_sec: Math.round(allw.length / SR * 100) / 100 } };
 }
 
-let __dbgN = 0; const __dbg = (m) => { if (__dbgN++ < 10) postMessage({ type: 'warn', msg: m, t: Math.round(performance.now()) }); };
+let __dbgN = 0; const __dbg = (m) => { if (__dbgN++ < 40) postMessage({ type: 'warn', msg: m, t: Math.round(performance.now()) }); };
 let ready = null;
 async function init(cfg) {
   self.__test = !!cfg.test;
@@ -151,15 +151,15 @@ async function init(cfg) {
   var __ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   ort.env.wasm.numThreads = cfg.threads || (__ios ? 1 : Math.min(4, navigator.hardwareConcurrency || 1));
   ort.env.wasm.wasmPaths = cfg.base || './';
-  const t0 = performance.now();
+  const t0 = performance.now(); __dbg('init_begin:thr' + ort.env.wasm.numThreads);
   const [m, v, vb] = await Promise.all([
     getModel(cfg.model),
     fetch(cfg.base + 'vocab.json').then(r => r.json()),
     fetch(cfg.base + 'af_heart.f32').then(r => r.arrayBuffer())]);
-  vocab = v; voice = new Float32Array(vb);
+  vocab = v; voice = new Float32Array(vb); __dbg('model_ready');
   postMessage({ type: 'progress', stage: 'session', wm_mb: __wm() });
   sess = await ort.InferenceSession.create(m, { executionProviders: ['wasm'], graphOptimizationLevel: 'all' });
-  tokName = sess.inputNames.includes('input_ids') ? 'input_ids' : 'tokens';
+  tokName = sess.inputNames.includes('input_ids') ? 'input_ids' : 'tokens'; __dbg('session_ready');
   if (__ios) { try { const t1 = performance.now(); const ph = await phonemize('Hello.'); __dbg('probe_ph:' + Math.round(performance.now() - t1) + 'ms'); const t2 = performance.now(); await infer([...ph].map(c => vocab[c]).filter(x => x !== undefined)); __dbg('probe_run:' + Math.round(performance.now() - t2) + 'ms'); } catch (e) { __dbg('probe_err:' + String(e && e.message || e).slice(0, 80)); } }
   return { load_sec: (performance.now() - t0) / 1000, threads: ort.env.wasm.numThreads, model: modelInfo, coi: self.crossOriginIsolated === true };
 }
