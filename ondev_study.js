@@ -72,6 +72,7 @@
     '';
   function mount() { document.body.insertBefore(box, document.body.firstChild); }
   if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
+  function collapseBox(full) { var b = document.getElementById('ondevStart'); if (b) b.style.display = 'none'; box.style.position = 'static'; box.style.padding = '4px 10px'; box.style.fontSize = '12px'; var m = document.getElementById('ondevMsg'); if (m) { m.style.marginTop = '0'; if (full) m.style.display = 'none'; } var r = document.getElementById('ondevRec'); if (r) { r.style.marginTop = '2px'; r.style.padding = '4px'; r.style.fontSize = '12px'; } }
   function say(t) { var m = document.getElementById('ondevMsg'); if (m) m.textContent = t; }
 
   window.__ondevOnDownload = function (got, total) { if (started && !initDone) say('取り込み中 ' + Math.round(got / Math.max(1, total) * 100) + '%（初回だけ・' + Math.round(total / 1e6) + 'MB）'); };
@@ -155,6 +156,7 @@
     if (!r.long) window.__ondevShort = true;
     send('first_ready', { first_sec: first, gen_first_sec: r.firstSec || r.sec, N: r.N || 1, seg: segTiming(), mem: mem() });
     try { document.getElementById('bRep').click(); } catch (e) { }
+    collapseBox(false);
     setTimeout(function () {
       var s = state(); send('play_check', Object.assign({ played: playedOnce }, s));
       if (!(s.at > 0 || s.playing || playedOnce)) { say('聞けます：画面いちばん下の ▶ Start（Back と Next の間）を押してください'); try { document.getElementById('ctl').scrollIntoView({ block: 'end' }); } catch (e) { } }
@@ -187,9 +189,16 @@
     var gen = (Date.now() - tStart) / 1000;
     send('finish', Object.assign({ ok: ok, total_sec: Math.round(gen), audio_sec: Math.round(audio), synth_sec: Math.round(synth), rtf_synth: audio ? Math.round(synth / audio * 100) / 100 : null, rtf_incl_setup: audio ? Math.round(gen / audio * 100) / 100 : null, fallback: fallbackUsed, mem: mem(), log: (window.__ondevLog || []).filter(function (x) { return x.type === 'warn'; }).slice(0, 12) }, s));
     lsSet({ run: RUN, kind: KIND, done: true });
+    if (ok) setTimeout(function () { collapseBox(true); }, 6000);
     if (ok) say('聞けます：全部できました。画面を消して、歩きながら聞いて大丈夫です');
     else if (s.ok > 0) say('続きを作れませんでした。できた所までで学習を続けられます');
   }
   document.addEventListener('click', function (e) { if (e.target && e.target.id === 'ondevStart') start(); });
-  window.__ondevStudyStart = start; window.__ondevText = TEXT;
+  window.__ondevSend = send;
+  /* イヤホン信号：再生開始・読み込みのたびに登録し直し、届いた信号を記録する（app.html側の登録が外れる場合の保険） */
+  (function () { if (!('mediaSession' in navigator)) return; var tries = 0;
+    function reg() { ['play', 'pause', 'nexttrack', 'previoustrack'].forEach(function (k) { try { navigator.mediaSession.setActionHandler(k, function () { var au = window.__core && window.__core.au; try { send('remote', { k: k, paused: au ? au.paused : null, hidden: document.hidden }); } catch (e) { } if (window.__appRemote) window.__appRemote(k); }); } catch (e) { } }); }
+    function hook() { var au = window.__core && window.__core.au; if (!au) { if (++tries < 40) setTimeout(hook, 500); return; } if (au.__msHooked) return; au.__msHooked = true; ['playing', 'loadedmetadata', 'play'].forEach(function (n) { au.addEventListener(n, reg); }); document.addEventListener('visibilitychange', function () { if (document.hidden) reg(); }); reg(); }
+    hook(); })();
+   window.__ondevStudyStart = start; window.__ondevText = TEXT;
 })();
