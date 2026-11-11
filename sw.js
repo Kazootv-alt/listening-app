@@ -1,6 +1,6 @@
 /* Listening PWA：アプリ殻をCache Storageに保存（オフライン起動）＋ COOP/COEP を付与（ヘッダを付けられない静的配信用）。
    SHELL の名前は build_site.py が殻ファイルの内容から自動で決める（殻が変わると名前が変わり、新しい殻が入って古い殻は消える）。 */
-const SHELL='shell-b893112bc0ee';
+const SHELL='shell-f972d3988a21';
 const FILES=['./','app.html','persist.js','record.js','firstrun.js','manifest.webmanifest','icon-180.png','icon-512.png','ondev_study.js','ondev_worker.js','ort-wasm-simd-threaded.mjs','ort-wasm-simd-threaded.wasm','ort.wasm.min.mjs','phonemizer.js','vocab.json','af_heart.f32'];
 const fresh=()=>FILES.map(f=>new Request(f,{cache:'reload'}));   // 殻の取得は、ブラウザのHTTPキャッシュを使わず常に最新を取る
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(SHELL).then(c=>c.addAll(fresh())))});
