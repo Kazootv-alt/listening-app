@@ -790,10 +790,23 @@ async function extract(doc,from,to){
 }
 function msg(t,c){var m=$('pdfMsg2');m.textContent=t;m.className=c||''}
 var row=document.createElement('div');row.id='pdfRow';
-row.innerHTML='<button type="button" id="pdfPick">PDFから英文を読み込む</button><button type="button" id="pdfSample">サンプルPDFで試す</button><input type="file" id="pdfFile2" accept="application/pdf,.pdf" hidden><span id="pdfMsg2" role="status"></span>';
+row.innerHTML='<button type="button" id="pdfPick">PDF・テキストから英文を読み込む</button><button type="button" id="pdfSample">サンプルPDFで試す</button><input type="file" id="pdfFile2" accept="application/pdf,.pdf,text/plain,.txt" hidden><span id="pdfMsg2" role="status"></span>';
 var ta=$('inTa');ta.parentNode.insertBefore(row,ta);
 $('pdfPick').onclick=function(){$('pdfFile2').value='';$('pdfFile2').click()};
+/* テキストファイル（.txt）：UTF-8 で読めなければ Shift_JIS（Windowsのメモ帳の古い保存形式）で読む */
+window.__txtToInput=async function(file){
+  try{
+    var b=new Uint8Array(await file.arrayBuffer()),t;
+    try{t=new TextDecoder('utf-8',{fatal:true}).decode(b)}catch(e){try{t=new TextDecoder('shift_jis').decode(b)}catch(e2){t=new TextDecoder('utf-8').decode(b)}}
+    t=t.replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n').trim();
+    if(!t){msg('英文が見つかりませんでした','ng');return {ok:false,why:'empty'}}
+    ta.value=t;ta.dispatchEvent(new Event('input'));
+    msg('英文を入れました（テキスト、'+t.length+'字）。必要なら直してください','ok');
+    return {ok:true,chars:t.length,txt:true};
+  }catch(e){msg('テキストを開けませんでした（'+(e.name||e)+'）','ng');return {ok:false,why:String(e&&e.message||e)}}
+};
 window.__pdfToInput=async function(file){
+  if(file&&(/\.txt$/i.test(file.name||'')||/^text\//.test(file.type||'')))return window.__txtToInput(file);
   try{
     msg('PDFを読んでいます…');
     var doc=await lib.getDocument({data:new Uint8Array(await file.arrayBuffer()),isEvalSupported:false}).promise;
