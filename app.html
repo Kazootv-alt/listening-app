@@ -307,7 +307,7 @@ function render(){
   else{
     v.innerHTML='';
     c.forEach(function(t,i){var s=document.createElement('span');s.className='ck'+(started&&i===idx?' cur':'');s.textContent=t+' ';v.appendChild(s)});
-    var cur=v.querySelector('.cur');if(cur)cur.scrollIntoView({block:'nearest',behavior:'smooth'});
+    var cur=v.querySelector('.cur');if(cur){var top=cur.offsetTop-v.offsetTop,vh=v.clientHeight;if(top<v.scrollTop||top+cur.offsetHeight>v.scrollTop+vh)v.scrollTo({top:Math.max(0,top-vh/3),behavior:'smooth'})} /* 英文の枠の中だけ動かす（ページ全体は上へ戻さない） */
   }
   var st=$('status');st.className=$('r1').className.indexOf('ng')>-1&&msg===$('r1').textContent?'ng':'';
   st.textContent=msg||((S.mode==='chunk'?'区切り ':'文 ')+(started?idx+1:0)+' / '+c.length);
@@ -324,8 +324,15 @@ function render(){
   }
 }
 P.forEach(function(p){var o=document.createElement('option');o.value=p.id;o.textContent=p.title;$('psel').appendChild(o)});
-document.querySelectorAll('#modeSeg button').forEach(function(b){b.onclick=function(){S.mode=b.dataset.v;save();rebuild()}});
-$('unit').onchange=function(){S.unit=this.value;save();rebuild()};
+/* 2026-11-17：区切り・モードを変えたら、最初からではなく今の位置（英文の何文字目か）の続きから新しい設定で始める */
+function carry(){if(!started)return null;var c=chunks(),o=0;for(var i=0;i<idx&&i<c.length;i++)o+=c[i].length+1;return o}
+function idxAt(off){var c=chunks(),o=0;for(var i=0;i<c.length;i++){if(o+c[i].length>=off)return i;o+=c[i].length+1}return Math.max(0,c.length-1)}
+function fullAt(i){var off=pass().fullOffsets||[],t=off[i]||0;fullOn=true;started=true;msg='';idx=i;
+  var seek=function(){au.removeEventListener('loadedmetadata',seek);try{au.currentTime=Math.min(t,Math.max(0,au.duration-0.5))}catch(e){}};
+  au.addEventListener('loadedmetadata',seek);core.play(S.pid+'_full','r1');render()}
+function switchKeep(fn){var o=carry();fn();save();if(o===null){rebuild();return}stopAll();var i=idxAt(o);if(S.mode==='chunk')playChunk(i);else fullAt(i)}
+document.querySelectorAll('#modeSeg button').forEach(function(b){b.onclick=function(){if(S.mode===b.dataset.v)return;switchKeep(function(){S.mode=b.dataset.v})}});
+$('unit').onchange=function(){var v=this.value;switchKeep(function(){S.unit=v})};
 $('psel').onchange=function(){S.pid=this.value;save();rebuild()};
 $('showBtn').onclick=function(){S.show=!S.show;save();render()};
 document.querySelectorAll('#rateSeg button').forEach(function(b){b.onclick=function(){S.rate=parseFloat(b.dataset.v);save();applyRate();render()}});
@@ -347,7 +354,7 @@ function remoteView(){var rl=$('remoteLog');if(!rl)return;
   rl.textContent='直近の信号：'+(lastSig?lastSig.n+'（'+lastSig.t+'）':'まだありません')+' ／ 状態：'+(au.paused?(started?'停止中':'未開始'):'再生中');}
 window.__appRemote=function(k){
   lastSig={n:RN[k]||k,t:hhmmss(),k:k};
-  if(S.mode==='chunk'){if(k==='play')onRepeat();else if(k==='pause')au.pause();else if(started&&k==='nexttrack')onNext();else if(started&&k==='previoustrack')onBack();}
+  if(S.mode==='chunk'){if(k==='play'||k==='pause')onRepeat();else if(k==='nexttrack')onNext();else if(started&&k==='previoustrack')onBack();} /* 2026-11-17 本人指定：1回タップ＝リピート、2回＝次へ */
   else{if(k==='play'&&au.paused)onPlayPause();else if(k==='pause'&&!au.paused)onPlayPause();}
   nowPlaying();remoteView(); /* 未開始で次へ・前へが届いた場合も、届いたことは表示する */
 };
@@ -501,7 +508,7 @@ window.__makeAudio=async function(){
 /* ===== 長文：自動分割・順次生成（LST-GATE v2 B3/B4） =====
    区間＝6文単位で約SEG字以下（2文／3文の区切りが全文と一致するように）。区間ごとに同じ生成要求（api/tts）を送り、
    区切り番号を全体の通し番号に付け替えて1つの英文に追加する。全文音声は区間の音声をつないで1本にする。 */
-var FIRST_SEG=400; /* 先頭区間は小さく（約400字・6文単位）して、聞き始めまでの待ちを短くする */
+var FIRST_SEG=160; /* 先頭区間は小さく（約400字・6文単位）して、聞き始めまでの待ちを短くする */
 function planSegments(sents){
   var segs=[],cur=[],len=0;
   for(var i=0;i<sents.length;i+=6){
@@ -870,4 +877,4 @@ note.textContent='※この試験ページには音声を作るサーバーが�
 var rh=document.getElementById('remoteHelp');rh.parentNode.insertBefore(note,rh.nextSibling);
 })();
 </script>
-<script src="ondev_study.js"></script>
+<script src="ondev_study.js"></script><script src="ux_fix.js"></script>
